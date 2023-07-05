@@ -1,0 +1,58 @@
+name: Deploy to caprover instance.
+
+env:
+    CONTEXT_DIR: './'
+    IMAGE_NAME: ${{ github.repository }}
+    DOCKERFILE: ./Dockerfile
+    # CAPROVER_APP: myapp-staging
+    DOCKER_REGISTRY: ghcr.io
+
+on:
+    push:
+        branches:
+            - main
+
+
+jobs:
+    build-and-publish:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v1
+            - name: Use Node.js ${{ matrix.node-version }}
+              uses: actions/setup-node@v3
+              with:
+                node-version: ${{ matrix.node-version }}
+                cache: "npm"
+            - run: npm ci
+            - run: npm run build --if-present
+            - run: npm run test --if-present
+           
+            - name: Log in to the Container registry
+              uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
+              with:
+                  registry: ${{ env.DOCKER_REGISTRY }}
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Extract metadata (tags, labels) for Docker
+              id: meta
+              uses: docker/metadata-action@v4
+              with:
+                images: ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_NAME }}
+
+            - name: Build and push Docker image
+              uses: docker/build-push-action@v3
+              with:
+                context: .
+                push: true
+                tags: ${{ steps.meta.outputs.tags }}
+                labels: ${{ steps.meta.outputs.labels }}
+
+
+            - name: Deploy to CapRover
+              uses: caprover/deploy-from-github@d76580d79952f6841c453bb3ed37ef452b19752c
+              with:
+                  server: ${{ secrets.CAPROVER_SERVER }}
+                  app: ${{ secrets.APP_NAME }}
+                  token: '${{ secrets.APP_TOKEN }}'
+                  image: ${{ steps.meta.outputs.tags }}
