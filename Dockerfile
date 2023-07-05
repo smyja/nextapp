@@ -9,10 +9,10 @@ COPY package*.json ./
 
 # Copy the built application files
 
-COPY ./next ./.next
+COPY ./.next ./.next
 COPY ./next.config.js ./next.config.js
 COPY ./public ./public
-COPY ./dist/static ./_next/static
+COPY ./.next/static ./_next/static
 COPY ./node_modules ./node_modules
 # Expose the desired port (e.g., 3000)
 
